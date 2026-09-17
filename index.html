@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Lena's Little Adventure ♡</title>
+<style>
+  :root{
+    --pink:#ff8fbd;
+    --pink2:#ffc7dc;
+    --pink3:#fff0f6;
+    --deep:#d84e87;
+    --ink:#5a3040;
+    --white:#fff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#ffd8e7;font-family:"Courier New",monospace;color:var(--ink);overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+  #wrap{
+    position:relative;
+    width:min(100vw,1100px);
+    height:min(100vh,760px);
+    background:linear-gradient(#ffb8d3 0 60%, #ffd9e8 60%);
+    overflow:hidden;
+    border:6px solid #fff;
+    box-shadow:0 0 0 6px #ee78aa;
+  }
+  canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+  .overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,231,241,.78);backdrop-filter:blur(3px);z-index:10;
+  }
+  .card{
+    width:min(88%,560px);
+    background:#fffafc;border:4px solid var(--deep);
+    box-shadow:10px 10px 0 #f5a4c4;padding:24px;text-align:center;
+  }
+  h1,h2,p{margin:0}
+  h1{font-size:clamp(28px,5vw,54px);color:var(--deep);text-shadow:3px 3px 0 #ffd0e2}
+  h2{font-size:clamp(22px,4vw,38px);color:var(--deep)}
+  .sub{margin-top:10px;font-size:clamp(14px,2.5vw,20px)}
+  .tiny{margin-top:12px;font-size:13px;opacity:.8}
+  button{
+    margin-top:20px;border:0;padding:14px 22px;background:var(--deep);color:white;
+    font:700 18px "Courier New",monospace;box-shadow:5px 5px 0 #f3a1c1;cursor:pointer
+  }
+  button:active{transform:translate(3px,3px);box-shadow:2px 2px 0 #f3a1c1}
+  #hud{
+    position:absolute;top:12px;left:14px;right:14px;z-index:5;display:flex;
+    align-items:center;justify-content:space-between;pointer-events:none;
+    font-weight:bold;text-shadow:2px 2px 0 white;
+  }
+  #bonusHud{font-size:clamp(14px,2.7vw,22px);color:#fff;background:rgba(216,78,135,.72);padding:7px 11px;border:3px solid #fff}
+  #date{font-size:clamp(12px,2.3vw,18px)}
+  #musicBtn{
+    position:absolute;right:14px;top:58px;z-index:7;margin:0;padding:8px 11px;
+    font-size:14px;border:3px solid #fff;box-shadow:3px 3px 0 #f3a1c1
+  }
+  #message{
+    display:none;position:absolute;left:50%;top:18%;transform:translateX(-50%);
+    width:min(86%,620px);z-index:8;background:#fff;border:4px solid var(--deep);
+    padding:18px 20px;text-align:center;box-shadow:8px 8px 0 #f49fc0
+  }
+  #message strong{display:block;font-size:clamp(19px,3.5vw,30px);color:var(--deep);margin-bottom:7px}
+  #controls{
+    position:absolute;left:0;right:0;bottom:max(12px, env(safe-area-inset-bottom));
+    display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px;z-index:7;
+    pointer-events:none;
+  }
+  .cluster{display:flex;gap:10px}
+  .ctrl{
+    width:68px;height:68px;border-radius:18px;border:3px solid white;background:rgba(216,78,135,.78);
+    color:white;font-size:30px;font-weight:bold;display:grid;place-items:center;
+    box-shadow:0 5px 0 rgba(122,44,76,.28);pointer-events:auto;user-select:none;touch-action:none
+  }
+  .ctrl:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(122,44,76,.28)}
+  #jump{width:78px;height:78px;border-radius:50%;font-size:17px}
+  #footerHint{
+    position:absolute;bottom:95px;left:50%;transform:translateX(-50%);z-index:4;
+    font-size:12px;background:rgba(255,255,255,.7);padding:5px 9px;border-radius:10px;
+    white-space:nowrap;
+  }
+  .hidden{display:none!important}
+  @media (min-width:900px){
+    #controls{opacity:.5}
+    #footerHint{bottom:18px}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="1100" height="760"></canvas>
+  <audio id="music" src="./ff7-theme.mp3" loop preload="auto"></audio>
+
+  <div id="hud">
+    <div id="bonusHud">BONUS : <span id="bonusCount">0</span>/4</div>
+    <div id="date">ROBERTO × LENA — 18.08.2026</div>
+  </div>
+
+  <div id="message"></div>
+  <button id="musicBtn" type="button" aria-label="Couper ou remettre la musique">🎵 MUSIQUE : ON</button>
+
+  <div id="start" class="overlay">
+    <div class="card">
+      <h1>LENA'S LITTLE ADVENTURE ♡</h1>
+      <p class="sub">Niveau 1 — Notre premier mois</p>
+      <p class="tiny">Attrape les bonus, évite les ennemis et rejoins Roberto au drapeau !</p>
+      <button id="playBtn">JOUER ▶</button>
+    </div>
+  </div>
+
+  <div id="end" class="overlay hidden">
+    <div class="card">
+      <h2>NIVEAU 1 TERMINÉ ♡</h2>
+      <p class="sub" style="margin-top:12px">Un mois avec toi, Lena.</p>
+      <p style="margin-top:16px;line-height:1.6">
+        Même à distance, tu rends mes journées plus belles.<br>
+        Merci pour ce premier mois ♡
+      </p>
+      <p class="tiny">Prochain niveau : notre deuxième mois ✦</p>
+      <button id="againBtn">REJOUER ↻</button>
+    </div>
+  </div>
+
+  <div id="controls">
+    <div class="cluster">
+      <div class="ctrl" id="left">←</div>
+      <div class="ctrl" id="right">→</div>
+    </div>
+    <div class="ctrl" id="jump">JUMP</div>
+  </div>
+
+  <div id="footerHint">PC : ← → + espace • Téléphone : boutons</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const W = canvas.width, H = canvas.height;
+let running = false, finished = false, cameraX = 0;
+let keys = {left:false,right:false,jump:false};
+let collected = [false,false,false,false];
+let enemies = [];
+let particles = [];
+let finishAnim = 0;
+
+const levelWidth = 2800;
+const groundY = 650;
+
+const player = {
+  x:100,y:groundY-64,w:42,h:64,vx:0,vy:0,onGround:false,face:1,
+  shield:0,speedBoost:0,doubleJump:false,jumps:0
+};
+
+const platforms = [
+  {x:0,y:groundY,w:620,h:110},
+  {x:700,y:groundY-45,w:290,h:155},
+  {x:1060,y:groundY,w:430,h:110},
+  {x:1570,y:groundY-70,w:270,h:180},
+  {x:1910,y:groundY,w:410,h:110},
+  {x:2400,y:groundY-35,w:400,h:145},
+  {x:380,y:520,w:190,h:28},
+  {x:790,y:470,w:150,h:28},
+  {x:1210,y:505,w:180,h:28},
+  {x:1660,y:430,w:130,h:28},
+  {x:2050,y:500,w:160,h:28}
+];
+
+const memories = [
+  {x:470,y:470,type:"star",title:"TCHIKI BRR ★",text:"Bonus vitesse : TCHIKI BRR !",color:"#ffe66d"},
+  {x:855,y:420,type:"cat",title:"PETIT CHAT 🐱",text:"Bonus bouclier : petit chat te protège !",color:"#fff"},
+  {x:1295,y:455,type:"meteor",title:"FF7 ✦",text:"Bonus double saut : la Materia est activée !",color:"#7ee7ff"},
+  {x:2110,y:450,type:"bomb",title:"BOMBARDILO CRODILO 💥",text:"Super bonus trouvé : BOMBARDILO CRODILO !",color:"#ff9fc2"}
+];
+
+const finish = {x:2600,y:groundY-190,w:115,h:190};
+
+const enemyStarts = [
+  {x:760,y:groundY-45-38,min:710,max:950,dir:1},
+  {x:1120,y:groundY-38,min:1070,max:1450,dir:-1},
+  {x:1615,y:groundY-70-38,min:1580,max:1800,dir:1},
+  {x:1980,y:groundY-38,min:1920,max:2280,dir:-1},
+  {x:2460,y:groundY-35-38,min:2410,max:2570,dir:1}
+];
+
+function reset(){
+  player.x=100; player.y=groundY-player.h; player.vx=0; player.vy=0;
+  cameraX=0; collected=[false,false,false,false]; finished=false; finishAnim=0;
+  player.shield=0;player.speedBoost=0;player.doubleJump=false;player.jumps=0;
+  enemies=enemyStarts.map(e=>({...e,w:42,h:38,alive:true,vx:1.25*e.dir}));
+  particles=[];
+  updateHUD();
+  document.getElementById('end').classList.add('hidden');
+}
+
+function updateHUD(){
+  const count = collected.filter(Boolean).length;
+  document.getElementById('bonusCount').textContent=count;
+}
+
+function rects(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+function showMessage(m){
+  const el = document.getElementById('message');
+  el.innerHTML = `<strong>${m.title}</strong><span>${m.text}</span>`;
+  el.style.display='block';
+  clearTimeout(showMessage.t);
+  showMessage.t=setTimeout(()=>el.style.display='none',2200);
+}
+
+function physics(){
+  if(!running || finished) return;
+
+  // Déplacement plus calme pour mieux viser les plateformes.
+  const speed=player.speedBoost>0?5.6:4.0;
+  if(player.speedBoost>0) player.speedBoost--;
+  if(player.shield>0) player.shield--;
+  if(keys.left){player.vx=-speed;player.face=-1}
+  else if(keys.right){player.vx=speed;player.face=1}
+  else player.vx*=0.72;
+
+  if(keys.jump && (player.onGround || (player.doubleJump && player.jumps<2))){
+    // Saut plus haut et plus confortable, y compris pour le double saut.
+    player.vy=-15.2; player.onGround=false; player.jumps++;
+  }
+  keys.jump=false;
+
+  player.vy += 0.57;
+  player.x += player.vx;
+  player.x=Math.max(0,Math.min(levelWidth-player.w,player.x));
+
+  player.y += player.vy;
+  player.onGround=false;
+
+  for(const p of platforms){
+    const wasBottom = player.y + player.h - player.vy;
+    if(player.x+player.w>p.x && player.x<p.x+p.w &&
+       player.y+player.h>p.y && player.y<p.y+p.h){
+      if(player.vy>=0 && wasBottom<=p.y+10){
+        player.y=p.y-player.h;
+        player.vy=0;
+        player.onGround=true;player.jumps=0;
+      }
+    }
+  }
+
+  if(player.y>H+150){
+    player.x=Math.max(40,player.x-220);
+    player.y=groundY-player.h; player.vy=0;
+  }
+
+  memories.forEach((m,i)=>{
+    if(collected[i]) return;
+    const hit={x:m.x-18,y:m.y-18,w:36,h:36};
+    if(rects(player,hit)){
+      collected[i]=true; updateHUD(); showMessage(m);
+      if(m.type==="star") player.speedBoost=600;
+      if(m.type==="cat") player.shield=600;
+      if(m.type==="meteor") player.doubleJump=true;
+      if(m.type==="bomb") { player.speedBoost=900; player.shield=900; player.doubleJump=true; }
+      for(let n=0;n<14;n++) particles.push({x:m.x,y:m.y,vx:(Math.random()-.5)*6,vy:-Math.random()*5,life:40,color:m.color});
+    }
+  });
+
+  enemies.forEach(e=>{
+    if(!e.alive)return;
+    e.x+=e.vx;
+    if(e.x<e.min||e.x>e.max){e.vx*=-1;e.x=Math.max(e.min,Math.min(e.max,e.x));}
+    if(rects(player,e)){
+      const previousBottom=player.y+player.h-player.vy;
+      if(player.vy>1 && previousBottom<=e.y+12){
+        e.alive=false;player.vy=-8;
+        showMessage({title:"BIEN JOUÉ !",text:"Ennemi écrasé 💥"});
+      }else if(player.shield>0){
+        e.alive=false;player.vx=-player.face*5;
+      }else{
+        showMessage({title:"AÏE !",text:"Retour au dernier passage…"});
+        player.x=Math.max(80,player.x-180);player.y=180;player.vy=0;
+      }
+    }
+  });
+
+  if(rects(player,finish)){
+    finished=true;finishAnim=1;
+    showMessage({title:"DRAPEAU ATTEINT !",text:"Roberto est trop content de te voir ♡"});
+    setTimeout(()=>document.getElementById('end').classList.remove('hidden'),1500);
+  }
+
+  cameraX += ((player.x - W*0.38)-cameraX)*0.08;
+  cameraX=Math.max(0,Math.min(levelWidth-W,cameraX));
+}
+
+function px(x,y,w,h,c){
+  ctx.fillStyle=c; ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
+}
+
+function heart(cx,cy,s,filled=true){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.fillStyle=filled ? "#fff" : "#ffd7e6";
+  ctx.strokeStyle="#d84e87"; ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.moveTo(0,s*.32);
+  ctx.bezierCurveTo(-s*.8,-s*.15,-s*.55,-s*.8,0,-s*.38);
+  ctx.bezierCurveTo(s*.55,-s*.8,s*.8,-s*.15,0,s*.32);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function cloud(x,y,s){
+  ctx.fillStyle="rgba(255,255,255,.82)";
+  ctx.beginPath();
+  ctx.arc(x,y,s*.28,0,Math.PI*2);
+  ctx.arc(x+s*.25,y-s*.12,s*.34,0,Math.PI*2);
+  ctx.arc(x+s*.55,y,s*.26,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawBackground(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#f6a9c8");
+  g.addColorStop(.7,"#ffd0e1");
+  g.addColorStop(1,"#ffe7f0");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+  for(let i=0;i<9;i++){
+    const x=(i*280 - cameraX*.18)%1450;
+    cloud(x,120+(i%3)*80,100+(i%2)*30);
+  }
+  ctx.fillStyle="rgba(255,255,255,.38)";
+  for(let i=0;i<30;i++){
+    const x=(i*97 - cameraX*.35)%1200;
+    const y=170+(i*47)%330;
+    ctx.fillRect(x,y,4,4);
+  }
+}
+
+function drawPlatform(p){
+  const x=p.x-cameraX;
+  if(x+p.w<0||x>W) return;
+  // couche d'herbe en pixels, plus épaisse et bien visible
+  px(x,p.y,p.w,p.h,"#7a4034");
+  px(x,p.y,p.w,8,"#dcffab");
+  px(x,p.y+8,p.w,11,"#7bd45b");
+  px(x,p.y+19,p.w,8,"#3c9142");
+  for(let xx=0;xx<p.w;xx+=16){
+    px(x+xx,p.y+4+(xx%32?3:0),9,8,xx%32?"#9dea70":"#5fbd4e");
+  }
+  // terre et briques avec joints sombres
+  for(let yy=32;yy<p.h;yy+=28){
+    for(let xx=((yy/28)%2)*18;xx<p.w;xx+=36){
+      px(x+xx,p.y+yy,32,20,(xx+yy)%72?"#b86f55":"#a95b4b");
+      px(x+xx,p.y+yy+17,32,3,"#5e302c");
+      px(x+xx+29,p.y+yy,3,20,"#6f382f");
+      px(x+xx+5,p.y+yy+5,7,4,"#d48767");
+    }
+  }
+  // petites fleurs roses et cailloux pour casser la répétition
+  for(let xx=18;xx<p.w;xx+=74){px(x+xx,p.y+2,3,9,"#fff");px(x+xx-3,p.y,9,4,"#ff9fc2")}
+  for(let xx=42;xx<p.w;xx+=91){px(x+xx,p.y+43,9,5,"#d59a7e");px(x+xx+3,p.y+40,4,3,"#efb292")}
+}
+
+function drawBonus(m){
+  const x=m.x-cameraX,y=m.y;
+  ctx.save();ctx.translate(x,y);ctx.rotate(Math.sin(Date.now()/180+m.x)*.08);
+  px(-22,-22,44,44,"#fff");px(-18,-18,36,36,m.color);px(-14,-14,28,28,"#d84e87");
+  ctx.fillStyle="#fff";ctx.font="bold 24px Courier New";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(m.type==="cat"?"🐱":m.type==="meteor"?"✦":m.type==="bomb"?"💥":"★",0,1);ctx.restore();
+}
+
+function drawEnemy(e){
+  if(!e.alive)return;const x=e.x-cameraX,y=e.y;
+  px(x+4,y+10,34,24,"#8d4770");px(x+9,y+4,24,10,"#b85a8c");
+  px(x+8,y+29,11,8,"#513341");px(x+25,y+29,11,8,"#513341");
+  px(x+11,y+16,6,6,"#fff");px(x+27,y+16,6,6,"#fff");
+  px(x+13,y+18,3,3,"#3b2330");px(x+29,y+18,3,3,"#3b2330");
+}
+
+function drawGirl(x,y,face){
+  // hair
+  px(x+6,y+5,30,34,"#5b3b35");
+  px(x+3,y+18,8,28,"#5b3b35");
+  px(x+31,y+18,8,28,"#5b3b35");
+  // face
+  px(x+11,y+14,20,19,"#ffd8c8");
+  px(x+14,y+21,3,3,"#3b2b2c");
+  px(x+25,y+21,3,3,"#3b2b2c");
+  px(x+19,y+28,5,2,"#e68ca6");
+  // pink bow
+  px(x+7,y+3,7,6,"#ff7fb1"); px(x+14,y+5,5,4,"#d84e87");
+  // body
+  px(x+11,y+34,20,18,"#fff");
+  px(x+9,y+40,24,12,"#ff9fc2");
+  // skirt
+  px(x+8,y+51,26,6,"#fff");
+  // legs + shoes
+  px(x+12,y+57,6,7,"#ffd8c8"); px(x+25,y+57,6,7,"#ffd8c8");
+  px(x+10,y+62,9,3,"#5b3b35"); px(x+24,y+62,9,3,"#5b3b35");
+}
+
+function drawRoberto(x,y){
+  px(x+6,y+6,30,18,"#463732");
+  px(x+10,y+16,22,19,"#f2c3aa");
+  px(x+14,y+22,3,3,"#33282a");
+  px(x+25,y+22,3,3,"#33282a");
+  px(x+18,y+29,7,2,"#d7838f");
+  px(x+9,y+35,24,21,"#fff");
+  px(x+8,y+41,26,8,"#d84e87");
+  px(x+12,y+56,7,8,"#384050"); px(x+24,y+56,7,8,"#384050");
+}
+
+function drawFinish(){
+  const x=finish.x-cameraX;
+  // drapeau rose façon fin de niveau
+  px(x+18,finish.y,10,190,"#fff");px(x+22,finish.y,4,190,"#d7d7e2");
+  ctx.fillStyle="#d84e87";ctx.beginPath();ctx.moveTo(x+28,finish.y+12);ctx.lineTo(x+102,finish.y+36);ctx.lineTo(x+28,finish.y+63);ctx.closePath();ctx.fill();
+  heart(x+55,finish.y+38,18,true);
+  px(x+3,finish.y+184,42,6,"#fff");
+  const jump=finishAnim?Math.abs(Math.sin(Date.now()/140))*24:0;
+  drawRoberto(x+52,finish.y+124-jump);
+  ctx.fillStyle="#fff";ctx.font="bold 18px Courier New";ctx.textAlign="center";
+  ctx.fillText(finishAnim?"ROBERTO ♡":"ARRIVÉE",x+58,finish.y-8);
+}
+
+function draw(){
+  drawBackground();
+  platforms.forEach(drawPlatform);
+
+  memories.forEach((m,i)=>{if(!collected[i]) drawBonus(m)});
+  enemies.forEach(drawEnemy);
+
+  particles.forEach(p=>{px(p.x-cameraX,p.y,5,5,p.color);p.x+=p.vx;p.y+=p.vy;p.vy+=.2;p.life--});
+  particles=particles.filter(p=>p.life>0);
+
+  drawFinish();
+  if(player.shield>0){ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=5;ctx.beginPath();ctx.arc(player.x-cameraX+21,player.y+32,38,0,Math.PI*2);ctx.stroke()}
+  drawGirl(player.x-cameraX,player.y,player.face);
+
+  // beginning sign
+  let sx=140-cameraX;
+  px(sx,groundY-150,180,80,"#fff");
+  px(sx+6,groundY-144,168,68,"#fff5f8");
+  ctx.fillStyle="#d84e87";ctx.font="bold 17px Courier New";ctx.textAlign="center";
+  ctx.fillText("BONNE CHANCE",sx+90,groundY-117);
+  ctx.fillText("AMUSE-TOI BIEN ♡",sx+90,groundY-94);
+}
+
+function loop(){
+  physics(); draw(); requestAnimationFrame(loop);
+}
+loop();
+
+document.getElementById('playBtn').onclick=()=>{
+  document.getElementById('start').classList.add('hidden');
+  running=true;
+  music.volume=.38;
+  music.play().catch(()=>{});
+};
+document.getElementById('againBtn').onclick=()=>{
+  reset(); running=true;
+};
+
+const music=document.getElementById('music');
+const musicBtn=document.getElementById('musicBtn');
+musicBtn.onclick=()=>{
+  if(music.paused){music.play().catch(()=>{});musicBtn.textContent="🎵 MUSIQUE : ON"}
+  else{music.pause();musicBtn.textContent="🔇 MUSIQUE : OFF"}
+};
+
+window.addEventListener('keydown',e=>{
+  if(["ArrowLeft","ArrowRight"," ","ArrowUp"].includes(e.key)) e.preventDefault();
+  if(e.key==="ArrowLeft") keys.left=true;
+  if(e.key==="ArrowRight") keys.right=true;
+  if(e.key===" "||e.key==="ArrowUp") keys.jump=true;
+});
+window.addEventListener('keyup',e=>{
+  if(e.key==="ArrowLeft") keys.left=false;
+  if(e.key==="ArrowRight") keys.right=false;
+});
+
+function bindHold(id,key){
+  const el=document.getElementById(id);
+  const on=(e)=>{e.preventDefault();keys[key]=true};
+  const off=(e)=>{e.preventDefault();keys[key]=false};
+  el.addEventListener('pointerdown',on);
+  el.addEventListener('pointerup',off);
+  el.addEventListener('pointercancel',off);
+  el.addEventListener('pointerleave',off);
+}
+bindHold('left','left');
+bindHold('right','right');
+document.getElementById('jump').addEventListener('pointerdown',e=>{
+  e.preventDefault();keys.jump=true;
+});
+
+reset();
+</script>
+</body>
+</html>
